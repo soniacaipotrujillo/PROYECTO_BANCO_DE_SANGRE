@@ -25,16 +25,7 @@ resource "aws_security_group" "banco_sangre_sg" {
   description = "Security group para la app Banco de Sangre"
   vpc_id      = null # usará la VPC por defecto
 
-  # Permitir HTTP (puerto 80)
-  ingress {
-    description = "HTTP"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # (Opcional) permitir puerto 5000 si quieres probar Flask directo
+  # Puerto 5000 para Flask
   ingress {
     description = "Flask dev port 5000"
     from_port   = 5000
@@ -49,7 +40,7 @@ resource "aws_security_group" "banco_sangre_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] # luego lo puedes restringir
+    cidr_blocks = ["0.0.0.0/0"] # Para producción, restringe esto a tu IP
   }
 
   # Salida a internet
@@ -65,12 +56,55 @@ resource "aws_security_group" "banco_sangre_sg" {
 # Instancia EC2
 # ==========================
 resource "aws_instance" "banco_sangre_ec2" {
-  ami                    = data.aws_ami.ubuntu.id
-  instance_type          = var.instance_type
-  key_name               = var.key_name
-  security_groups        = [aws_security_group.banco_sangre_sg.name]
+  ami               = data.aws_ami.ubuntu.id
+  instance_type     = var.instance_type
+  key_name          = var.key_name
+  security_groups   = [aws_security_group.banco_sangre_sg.name]
 
   tags = {
     Name = "${var.project_name}-ec2"
   }
+
+  # --- INICIO DE BLOQUES AÑADIDOS ---
+  connection {
+    type        = "ssh"
+    user        = "ubuntu"
+    
+    # Ruta correcta a la llave (en la carpeta padre)
+    private_key = file("../banco-sangre-key.pem") 
+    
+    host        = self.public_ip
+  }
+
+  # ==================================
+  # == ¡ARREGLO #3: BORRAR Y RE-CREAR! ==
+  # ==================================
+  # Borra 'app' y la vuelve a crear vacía
+  provisioner "remote-exec" {
+    inline = [
+      "sudo rm -rf /home/ubuntu/app",
+      "mkdir /home/ubuntu/app"
+    ]
+  }
+  # ==================================
+
+  # Copia la carpeta 'app' a la instancia
+  provisioner "file" {
+    source      = "../app/" # Sube el *contenido* de 'app'
+    destination = "/home/ubuntu/app" # *Dentro* de la carpeta 'app'
+  }
+
+# Instala Python, Flask y ejecuta la app
+  provisioner "remote-exec" {
+    inline = [
+      "sudo apt-get update",
+      "sudo apt-get upgrade -y", # <-- ¡AÑADE ESTA LÍNEA!
+      "sudo apt-get install -y python3-venv python3-pip git",
+      "sudo pip3 install flask",
+      
+      # Ejecuta la app en segundo plano
+      "nohup python3 /home/ubuntu/app/app.py >/dev/null 2>&1 &"
+    ]
+  }
+  # --- FIN DE BLOQUES AÑADIDOS ---
 }

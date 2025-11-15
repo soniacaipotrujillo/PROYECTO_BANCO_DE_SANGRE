@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Lista de Donantes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Lista de Donantes</h1>
+    </header>
+
+    <main>
+        <p>Estos son los donantes registrados:</p>
+        <ul>
+            {% for donante in donantes %}
+                <li>{{ donante }}</li>
+            {% endfor %}
+        </ul>
+        <a href="/">Volver al inicio</a>
+    </main>
+</body>
+</html>
