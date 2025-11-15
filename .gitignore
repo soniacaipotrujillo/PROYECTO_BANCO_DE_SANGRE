@@ -1,0 +1,9 @@
+# Ignorar carpetas de dependencias de Terraform
+.terraform/
+
+# Ignorar binarios y ejecutables
+*.exe
+
+# Ignorar archivos de estado de Terraform
+*.tfstate
+*.tfstate.backup
